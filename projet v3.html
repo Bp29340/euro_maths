@@ -1,0 +1,1509 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optimising a vegetable garden along a wall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700&family=Inter:wght@400;500;600;700;800&family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --forest:#1E3B2C;
+    --forest-2:#152A20;
+    --sage:#6F9169;
+    --sage-light:#D7E3CC;
+    --sand:#F3EFE2;
+    --sand-2:#E9E1CB;
+    --cream:#FBF9F1;
+    --ochre:#B98B3E;
+    --ink:#1B241D;
+    --ink-soft:#4B564D;
+    --line:#C9BFA0;
+    --white:#FFFFFF;
+    --gold:#D4A954;
+    --gold-glow:rgba(212,169,84,.55);
+    --glass-bg:rgba(255,255,255,.34);
+    --glass-bd:rgba(255,255,255,.55);
+    --glass-ink:#152A20;
+    --ease-out:cubic-bezier(.16,1,.3,1);
+    --ease-spring:cubic-bezier(.34,1.42,.5,1);
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --sand:#12201A;
+      --sand-2:#182A22;
+      --cream:#1A2A22;
+      --ink:#ECE7D8;
+      --ink-soft:#B9C2B4;
+      --line:#3B4A3E;
+      --white:#0E1913;
+      --forest:#CFE0C6;
+      --forest-2:#0B140F;
+      --glass-bg:rgba(30,59,44,.42);
+      --glass-bd:rgba(215,227,204,.28);
+      --glass-ink:#ECE7D8;
+    }
+  }
+  :root[data-theme="dark"]{
+    --sand:#12201A;
+    --sand-2:#182A22;
+    --cream:#1A2A22;
+    --ink:#ECE7D8;
+    --ink-soft:#B9C2B4;
+    --line:#3B4A3E;
+    --white:#0E1913;
+    --forest:#CFE0C6;
+    --forest-2:#0B140F;
+    --glass-bg:rgba(30,59,44,.42);
+    --glass-bd:rgba(215,227,204,.28);
+    --glass-ink:#ECE7D8;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{
+    height:100%;
+    background:var(--forest-2);
+    overflow:hidden;
+    font-family:'Inter', sans-serif;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--sage-light); color:var(--forest-2); }
+
+  /* =================================================== */
+  /*  Deck + slide transitions                           */
+  /* =================================================== */
+  .deck{
+    position:fixed;
+    inset:0;
+    perspective:1700px;
+    perspective-origin:50% 45%;
+    transform-style:preserve-3d;
+    overflow:hidden;
+  }
+
+  .slide{
+    position:absolute;
+    inset:0;
+    background:var(--sand);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    isolation:isolate;
+    visibility:hidden;
+    opacity:0;
+    pointer-events:none;
+    transform-origin:50% 50%;
+    backface-visibility:hidden;
+    will-change:transform,opacity,filter;
+    transition:
+      transform .78s var(--ease-out),
+      opacity .42s ease,
+      filter .55s var(--ease-out);
+  }
+  .slide::before{
+    content:''; position:absolute; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 22%, var(--sage) 0, transparent 60%),
+      radial-gradient(1.5px 1.5px at 88% 14%, var(--ochre) 0, transparent 60%),
+      radial-gradient(1.5px 1.5px at 76% 82%, var(--sage) 0, transparent 60%),
+      radial-gradient(1.5px 1.5px at 22% 88%, var(--sage) 0, transparent 60%),
+      repeating-linear-gradient(0deg, transparent 0 58px, var(--line) 58px 59px),
+      repeating-linear-gradient(90deg, transparent 0 58px, var(--line) 58px 59px);
+    opacity:.16;
+  }
+  .slide-inner{ position:relative; z-index:1; }
+  .slide.is-anim{ visibility:visible; }
+  .slide.is-active{
+    visibility:visible;
+    opacity:1;
+    pointer-events:auto;
+    z-index:10;
+    transform:none;
+    filter:none;
+    /* the arriving slide becomes readable almost at once, then settles */
+    transition:
+      transform .78s var(--ease-out),
+      opacity .3s ease-out,
+      filter .42s var(--ease-out);
+  }
+  /* staged off-screen, waiting to come in */
+  .slide.stage-right{ transform:translate3d(32vw,0,-420px) rotateY(-12deg) scale(.95); opacity:0; filter:blur(10px) saturate(.7); z-index:9; }
+  .slide.stage-left { transform:translate3d(-32vw,0,-420px) rotateY(12deg) scale(.95); opacity:0; filter:blur(10px) saturate(.7); z-index:9; }
+  /* leaving */
+  .slide.exit-left { transform:translate3d(-26vw,0,-400px) rotateY(10deg) scale(.92); opacity:0; filter:blur(12px) saturate(.6); z-index:8; transition:transform .7s var(--ease-out), opacity .4s ease, filter .45s ease; }
+  .slide.exit-right{ transform:translate3d(26vw,0,-400px) rotateY(-10deg) scale(.92); opacity:0; filter:blur(12px) saturate(.6); z-index:8; transition:transform .7s var(--ease-out), opacity .4s ease, filter .45s ease; }
+
+  .slide-inner{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    padding:clamp(28px,5vw,66px) clamp(28px,7vw,92px) clamp(96px,10vh,118px);
+    max-width:1400px;
+    margin:0 auto;
+    width:100%;
+    overflow:hidden;
+  }
+
+  /* staggered content reveal */
+  .rv{
+    opacity:0;
+    transform:translateY(26px) scale(.985);
+    filter:blur(7px);
+    transition:opacity .7s var(--ease-out), transform .8s var(--ease-out), filter .7s var(--ease-out);
+    transition-delay:calc(var(--i,0) * 58ms + 170ms);
+  }
+  .is-active .rv{ opacity:1; transform:none; filter:none; }
+  .slide:not(.is-active) .rv{ transition-duration:.3s; transition-delay:0ms; }
+
+  /* =================================================== */
+  /*  Typography                                          */
+  /* =================================================== */
+  .kicker{
+    font-size:12.5px;
+    letter-spacing:.09em;
+    color:var(--sage);
+    font-weight:700;
+    margin-bottom:10px;
+    text-transform:uppercase;
+    display:flex; align-items:center;
+  }
+  .kicker::before{
+    content:'';
+    display:inline-block;
+    width:7px; height:7px;
+    border-radius:50%;
+    background:var(--ochre);
+    margin-right:9px;
+    position:relative;
+    top:0;
+    flex-shrink:0;
+  }
+  .kicker .chnum{ color:var(--forest); font-weight:800; margin-right:7px; }
+
+  /* ---------- brand mark (persistent leaf logo) ---------- */
+  .brandmark{
+    position:fixed; top:20px; left:24px; z-index:30;
+    display:flex; align-items:center; gap:9px;
+    padding:7px 14px 7px 10px; border-radius:100px;
+    background:var(--glass-bg); border:1px solid var(--glass-bd);
+    -webkit-backdrop-filter:blur(16px) saturate(180%);
+    backdrop-filter:blur(16px) saturate(180%);
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.6), 0 6px 18px rgba(21,42,32,.12);
+    color:var(--glass-ink); font-size:11.5px; font-weight:700; letter-spacing:.04em;
+  }
+  .brandmark svg{ display:block; flex-shrink:0; }
+  @media (max-width:900px){ .brandmark span{ display:none; } .brandmark{ padding:8px; } }
+  h1.slide-title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(28px,4.1vw,50px);
+    line-height:1.05;
+    color:var(--forest);
+    letter-spacing:-.01em;
+  }
+  .slide-sub{
+    font-size:clamp(14px,1.3vw,17px);
+    color:var(--ink-soft);
+    margin-top:10px;
+    max-width:62ch;
+    line-height:1.5;
+  }
+
+  /* ---------- Maths setting (STIX Two Text) ---------- */
+  .math{
+    font-family:'STIX Two Text', 'Cambria', Georgia, serif;
+    font-weight:500;
+    color:var(--forest);
+    line-height:1.2;
+    letter-spacing:.005em;
+    font-variant-numeric:lining-nums;
+    white-space:nowrap;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:.02em;
+    flex-wrap:wrap;
+  }
+  .math .v{ font-style:italic; }
+  .math sup{ font-size:.6em; vertical-align:.52em; line-height:0; margin-left:.02em; }
+  .math sub{ font-size:.6em; vertical-align:-.22em; line-height:0; font-style:italic; margin-left:.02em; }
+  .math .op{ margin:0 .22em; font-style:normal; }
+  .math .neg{ margin:0 .02em 0 .22em; font-style:normal; }
+  .frac{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    vertical-align:middle;
+    margin:0 .3em;
+    font-size:.94em;
+    position:relative;
+    top:-.02em;
+  }
+  .frac > span{ display:block; padding:0 .45em; white-space:nowrap; }
+  .frac .den{
+    border-top:1.7px solid currentColor;
+    margin-top:.12em;
+    padding-top:.12em;
+  }
+  .sqrt{ display:inline-flex; align-items:stretch; }
+  .sqrt .rad{ font-style:normal; }
+  .sqrt .body{ border-top:1.6px solid currentColor; padding:.06em .14em 0 .06em; margin-top:.14em; }
+
+  /* ---------- Cards ---------- */
+  .card{
+    background:var(--cream);
+    border:1px solid var(--line);
+    border-radius:22px;
+    padding:24px;
+  }
+  .card.soft{ background:var(--sand-2); border-color:transparent; }
+  .card-label{
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink-soft);
+    letter-spacing:.01em;
+  }
+  .result-number{
+    font-family:'STIX Two Text', serif;
+    font-weight:600;
+    color:var(--forest);
+    line-height:1;
+    font-variant-numeric:lining-nums;
+  }
+  .glow-num{ text-shadow:0 0 28px var(--gold-glow), 0 0 60px var(--gold-glow); }
+
+  /* =================================================== */
+  /* Slide 0 — Intro */
+  /* =================================================== */
+  .s-intro{ background:var(--forest); }
+  .s-intro .slide-inner{ justify-content:center; align-items:center; text-align:center; }
+  .s-intro .kicker{ justify-content:center; color:var(--sage-light); }
+  .s-intro .kicker::before{ background:var(--gold); }
+  .s-intro .kicker .chnum{ color:var(--cream); }
+  .intro-logo{ margin-bottom:20px; }
+  .intro-logo svg{ display:block; margin:0 auto; }
+  .intro-title{
+    font-family:'Fraunces', serif; font-weight:600; color:var(--cream);
+    font-size:clamp(36px,6.4vw,88px); line-height:1.04; max-width:17ch;
+    margin-top:16px; letter-spacing:-.015em;
+  }
+
+  /* =================================================== */
+  /* Slide 1 — Cover */
+  /* =================================================== */
+  .s-cover .slide-inner{ justify-content:center; }
+  .s-cover{ background: radial-gradient(ellipse 900px 600px at 82% -10%, var(--sage-light) 0%, transparent 60%), var(--sand); }
+  .cover-grid{
+    display:grid;
+    grid-template-columns:1.05fr .95fr;
+    gap:clamp(24px,4vw,64px);
+    align-items:center;
+  }
+  .cover-eyebrow{ font-size:13px; color:var(--sage); font-weight:600; margin-bottom:18px; }
+  h1.cover-title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(34px,4.9vw,62px);
+    line-height:1.03;
+    color:var(--forest);
+    letter-spacing:-.015em;
+  }
+  .cover-sub{ font-size:clamp(15px,1.5vw,19px); color:var(--ink-soft); margin-top:18px; max-width:44ch; line-height:1.55; }
+  .cover-hook{
+    margin-top:30px;
+    padding-left:18px;
+    border-left:2px solid var(--ochre);
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-size:clamp(16px,1.6vw,20px);
+    color:var(--forest);
+    max-width:40ch;
+    line-height:1.4;
+  }
+  .cover-tags{ display:flex; gap:10px; margin-top:34px; flex-wrap:wrap; }
+  .tag{
+    font-size:12.5px; font-weight:600;
+    padding:7px 13px; border-radius:100px;
+    background:var(--sand-2); color:var(--forest);
+    border:1px solid var(--line);
+  }
+
+  .diagram-frame{
+    background:var(--cream);
+    border:1px solid var(--line);
+    border-radius:26px;
+    padding:22px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  /* =================================================== */
+  /* Slide 2 — Problem */
+  /* =================================================== */
+  .s-problem .slide-inner{ justify-content:center; }
+  .problem-grid{
+    display:grid; grid-template-columns:1.15fr .85fr;
+    gap:clamp(24px,3.5vw,48px); align-items:center;
+    margin-top:clamp(18px,3vw,34px);
+  }
+  .side-stack{ display:flex; flex-direction:column; gap:16px; }
+  .fence-card{ text-align:center; }
+  .eq-card{ text-align:center; padding:28px 22px; }
+  .eq-card .math{ font-size:clamp(25px,2.7vw,34px); }
+
+  /* =================================================== */
+  /* Slide 3 — Steps */
+  /* =================================================== */
+  .s-steps .slide-inner{ justify-content:center; }
+  .steps-wrap{
+    display:flex; flex-direction:column; align-items:stretch;
+    gap:0; margin-top:clamp(16px,2.6vw,26px);
+    max-width:640px; margin-left:auto; margin-right:auto; width:100%;
+  }
+  .step-arrow{
+    display:flex; align-items:center; justify-content:center;
+    height:22px; color:var(--ochre); opacity:.7;
+  }
+  .step-arrow svg{ display:block; }
+  .step{
+    display:flex; align-items:center; gap:16px;
+    background:var(--cream); border:1px solid var(--line);
+    border-radius:18px; padding:13px 20px;
+  }
+  .step-index{
+    font-family:'STIX Two Text', serif;
+    font-weight:600; font-size:15px; color:var(--sage);
+    width:26px; height:26px; border-radius:50%;
+    border:1.5px solid var(--sage);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .step .math{ font-size:clamp(17px,1.7vw,21px); justify-content:flex-start; }
+  .step-note{ font-size:12.5px; color:var(--ink-soft); margin-left:auto; padding-left:14px; white-space:nowrap; }
+  .step-final{
+    grid-column:1 / -1;
+    background:var(--forest);
+    border-radius:22px;
+    padding:24px 30px; text-align:center; margin-top:6px;
+  }
+  .step-final .card-label{ color:var(--sage-light); margin-bottom:8px; }
+  .step-final .math{ color:var(--cream); font-size:clamp(28px,3.4vw,42px); }
+
+  /* =================================================== */
+  /* Slide 4 — Function + graph */
+  /* =================================================== */
+  .s-function .slide-inner{ justify-content:center; }
+  .func-grid{
+    display:grid; grid-template-columns:.74fr 1.26fr;
+    gap:clamp(22px,3.2vw,42px); align-items:center;
+    margin-top:clamp(16px,2.4vw,26px);
+  }
+  .func-hero{ text-align:center; padding:24px 18px; }
+  .func-hero .math{ font-size:clamp(23px,2.5vw,31px); }
+  .coeffs{ display:flex; flex-direction:column; gap:9px; margin-top:13px; }
+  .coeff-row{
+    display:flex; align-items:center; gap:12px;
+    background:var(--sand-2); border-radius:14px; padding:11px 16px;
+  }
+  .coeff-row .math{ font-size:23px; width:1.3em; justify-content:center; }
+  .coeff-row .what{ font-size:12.5px; color:var(--ink-soft); }
+  .coeff-row .val{
+    margin-left:auto; font-weight:600; color:var(--forest);
+    font-family:'STIX Two Text', serif; font-size:21px;
+  }
+  .graph-card{ padding:16px 18px 10px; }
+  .func-note{
+    margin-top:14px; font-size:13px; color:var(--ink-soft);
+    line-height:1.5; padding-left:14px; border-left:2px solid var(--ochre);
+  }
+
+  /* =================================================== */
+  /* Slides 5 & 6 — worked examples */
+  /* =================================================== */
+  .s-value .slide-inner, .s-solve .slide-inner{ justify-content:center; }
+  .work-grid{
+    display:grid; grid-template-columns:1.08fr .92fr;
+    gap:clamp(22px,3.2vw,44px); align-items:center;
+    margin-top:clamp(16px,2.6vw,28px);
+  }
+  .work-chain{ display:flex; flex-direction:column; gap:11px; }
+  .work-chain .step{ padding:14px 18px; }
+  .work-chain .step .math{ font-size:clamp(16px,1.6vw,20px); }
+  .answer-card{
+    background:var(--forest); border-radius:22px;
+    padding:clamp(22px,3vw,32px); text-align:center;
+  }
+  .answer-card .card-label{ color:var(--sage-light); }
+  .answer-card .result-number{ color:var(--cream); font-size:clamp(42px,5.4vw,74px); margin-top:8px; }
+  .answer-card .sub{ color:var(--sage-light); font-size:13.5px; margin-top:10px; line-height:1.5; }
+  .twin-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+  .twin{
+    background:var(--cream); border:1px solid var(--line);
+    border-radius:18px; padding:16px; text-align:center;
+  }
+  .twin .math{ font-size:20px; }
+  .twin .dim{ font-size:12.5px; color:var(--ink-soft); margin-top:7px; }
+  .delta-badge{
+    display:inline-flex; align-items:center; gap:10px;
+    background:var(--sand-2); border-radius:100px;
+    padding:9px 18px; margin-top:4px;
+  }
+  .delta-badge .math{ font-size:19px; }
+  .delta-badge .tagline{ font-size:12.5px; color:var(--ink-soft); }
+  .mini-caption{
+    margin-top:14px; font-size:13px; color:var(--ink-soft);
+    line-height:1.5; padding-left:14px; border-left:2px solid var(--ochre);
+  }
+
+  /* =================================================== */
+  /* Slide 7 — Vertex */
+  /* =================================================== */
+  .s-vertex .slide-inner{ justify-content:center; align-items:center; text-align:center; }
+  .vertex-chain{
+    display:flex; align-items:center; gap:clamp(12px,2vw,24px); flex-wrap:wrap;
+    justify-content:center; margin-top:clamp(22px,3.4vw,40px);
+  }
+  .vertex-chain .math{ font-size:clamp(21px,2.4vw,29px); }
+  .arrow{ color:var(--ochre); font-size:22px; }
+  .big-result{
+    margin-top:clamp(22px,3.4vw,40px);
+    background:var(--forest); border-radius:28px;
+    padding:clamp(24px,3.4vw,40px) clamp(44px,6.4vw,84px);
+    display:inline-block;
+  }
+  .big-result .card-label{ color:var(--sage-light); }
+  .big-result .result-number{ color:var(--cream); font-size:clamp(48px,6.4vw,88px); margin-top:6px; }
+  .vertex-note{
+    margin-top:20px; font-family:'Fraunces', serif; font-style:italic;
+    color:var(--forest); font-size:clamp(15px,1.5vw,18px); max-width:52ch;
+  }
+
+  /* =================================================== */
+  /* Slide 8 — Length */
+  /* =================================================== */
+  .s-length .slide-inner{ justify-content:center; }
+  .length-grid{
+    display:grid; grid-template-columns:.85fr 1.15fr;
+    gap:clamp(24px,3.5vw,48px); align-items:center;
+    margin-top:clamp(18px,3vw,30px);
+  }
+  .length-chain{ display:flex; flex-direction:column; gap:13px; }
+  .length-chain .step-final{ grid-column:auto; }
+
+  /* =================================================== */
+  /* Slide 9 — Final result */
+  /* =================================================== */
+  .s-final .slide-inner{ justify-content:center; }
+  .final-grid{
+    display:grid; grid-template-columns:1fr 1fr 1fr;
+    gap:16px; margin-top:clamp(18px,3vw,28px);
+  }
+  .final-card{ text-align:center; padding:clamp(20px,2.4vw,28px) 14px; }
+  .final-card .result-number{ font-size:clamp(32px,3.8vw,50px); margin-top:6px; }
+  .final-hero{ text-align:center; margin-top:clamp(6px,1.6vw,14px); }
+  .final-hero .hero-label{ font-size:12.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--sage); font-weight:700; }
+  .final-hero .hero-num{
+    font-family:'STIX Two Text', serif; font-weight:600; color:var(--forest);
+    font-size:clamp(64px,10vw,140px); line-height:1; margin-top:2px;
+  }
+  .final-stats{ display:flex; gap:12px; justify-content:center; margin-top:18px; flex-wrap:wrap; }
+  .final-stat-chip{
+    background:var(--cream); border:1px solid var(--line); border-radius:100px;
+    padding:8px 20px; font-family:'STIX Two Text', serif; font-weight:600;
+    color:var(--forest); font-size:clamp(15px,1.4vw,18px);
+  }
+  .final-illustration{ margin-top:clamp(18px,2.6vw,26px); display:flex; justify-content:center; }
+  .final-caption{
+    text-align:center; margin-top:16px;
+    font-family:'Fraunces', serif; font-style:italic;
+    color:var(--forest); font-size:clamp(15px,1.5vw,18px);
+  }
+
+  /* =================================================== */
+  /* Slide 10 — Comparison */
+  /* =================================================== */
+  .s-compare .slide-inner{ justify-content:center; }
+  .compare-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:22px;
+    margin-top:clamp(18px,3vw,30px); align-items:stretch;
+  }
+  .compare-card{ padding:24px; display:flex; flex-direction:column; gap:14px; }
+  .compare-card h3{ font-family:'Fraunces', serif; font-weight:600; font-size:19px; color:var(--forest); }
+  .compare-card .desc{ font-size:14px; color:var(--ink-soft); line-height:1.55; }
+  .compare-stat{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-top:auto; padding-top:10px; border-top:1px solid var(--line);
+  }
+  .compare-stat .lbl{ font-size:13px; color:var(--ink-soft); font-weight:600; }
+  .compare-stat .val{ font-family:'STIX Two Text', serif; font-weight:600; font-size:27px; color:var(--forest); }
+  .compare-card.win{ background:var(--forest); border-color:var(--forest); }
+  .compare-card.win h3, .compare-card.win .compare-stat .val{ color:var(--cream); }
+  .compare-card.win .desc{ color:var(--sage-light); }
+  .compare-card.win .compare-stat{ border-color:rgba(255,255,255,.18); }
+  .compare-card.win .compare-stat .lbl{ color:var(--sage-light); }
+
+  /* =================================================== */
+  /* Slide 11 — Summary */
+  /* =================================================== */
+  .s-summary .slide-inner{ justify-content:center; align-items:center; }
+  .flow{ display:flex; flex-direction:column; align-items:center; margin-top:clamp(16px,2.6vw,26px); }
+  .flow-node{
+    background:var(--cream); border:1px solid var(--line);
+    border-radius:16px; padding:11px 26px; text-align:center; min-width:270px;
+  }
+  .flow-node.peak{ background:var(--forest); border-color:var(--forest); }
+  .flow-node.peak .flow-label{ color:var(--sage-light); }
+  .flow-node.peak .flow-value{ color:var(--cream); }
+  .flow-label{ font-size:11.5px; font-weight:700; color:var(--ink-soft); letter-spacing:.02em; }
+  .flow-value{ font-family:'STIX Two Text', serif; font-weight:600; font-size:18px; color:var(--forest); margin-top:2px; }
+  .flow-connector{ width:1.5px; height:20px; background:var(--line); }
+  .summary-caption{
+    margin-top:24px; text-align:center;
+    font-family:'Fraunces', serif; font-style:italic;
+    font-size:clamp(15px,1.6vw,20px); color:var(--forest);
+    max-width:46ch; line-height:1.45;
+  }
+
+  /* =================================================== */
+  /*  Graph styling (SVG built in JS)                    */
+  /* =================================================== */
+  #graph, #graph2{ display:block; width:100%; height:auto; }
+  .g-axis{ stroke:var(--line); stroke-width:1.5; }
+  .g-tick{ stroke:var(--line); stroke-width:1.5; }
+  .g-tick-text{ fill:var(--ink-soft); font-size:12px; font-weight:500; }
+  .g-axis-title{ fill:var(--ink-soft); font-size:12.5px; font-weight:600; }
+  .g-area{ fill:var(--sage-light); opacity:0; transition:opacity .9s ease .35s; }
+  .g-curve{ fill:none; stroke:var(--forest); stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+  .g-guide{ stroke:var(--ochre); stroke-width:1.6; stroke-dasharray:5 5; }
+  .g-hline{ stroke:var(--sage); stroke-width:2; stroke-dasharray:8 6; }
+  .g-dot{ fill:var(--ochre); stroke:var(--cream); stroke-width:2.5; }
+  .g-dot.alt{ fill:var(--sage); }
+  .g-dot.peak{ filter:drop-shadow(0 0 10px var(--gold-glow)); animation:pulseDot 1.8s ease-in-out infinite; animation-delay:1.2s; }
+  @keyframes pulseDot{ 0%,100%{ r:6; } 50%{ r:8.5; } }
+  .g-note.peak{ fill:var(--ochre); font-size:16px; font-weight:800; }
+  .g-note{ fill:var(--forest); font-size:13.5px; font-weight:700; }
+  .g-note.soft{ fill:var(--ink-soft); font-size:12.5px; font-weight:600; }
+  .g-late{ opacity:0; transition:opacity .6s ease; }
+  .played .g-area{ opacity:.5; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .played .g-area{ opacity:.2; }
+  }
+  :root[data-theme="dark"] .played .g-area{ opacity:.2; }
+  .played .g-late{ opacity:1; }
+  .played .g-late{ transition-delay:1.05s; }
+  #graph2 .g-tick-text{ font-size:17px; }
+  #graph2 .g-axis-title{ font-size:17px; }
+  #graph2 .g-note{ font-size:17px; }
+  #graph2 .g-note.soft{ font-size:16px; }
+  svg text{ font-family:'Inter', sans-serif; }
+  svg text.mathlabel{ font-family:'STIX Two Text', serif; font-style:italic; }
+
+  /* =================================================== */
+  /*  Ambient light (gives the glass something to bend)  */
+  /* =================================================== */
+  .ambient{
+    position:fixed; left:0; right:0; bottom:0; height:230px;
+    z-index:12; pointer-events:none; overflow:hidden;
+  }
+  .ambient i{
+    position:absolute; bottom:-90px;
+    width:340px; height:220px; border-radius:50%;
+    filter:blur(52px); opacity:.3;
+  }
+  .ambient i:nth-child(1){ background:var(--sage); left:14%; animation:drift1 17s ease-in-out infinite; }
+  .ambient i:nth-child(2){ background:var(--ochre); left:44%; animation:drift2 21s ease-in-out infinite; }
+  .ambient i:nth-child(3){ background:var(--sage-light); left:72%; animation:drift3 19s ease-in-out infinite; }
+  @keyframes drift1{ 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(90px,-26px) scale(1.15);} }
+  @keyframes drift2{ 0%,100%{transform:translate(0,0) scale(1.1);} 50%{transform:translate(-110px,-16px) scale(.9);} }
+  @keyframes drift3{ 0%,100%{transform:translate(0,0) scale(.95);} 50%{transform:translate(-70px,-32px) scale(1.2);} }
+
+  /* =================================================== */
+  /*  Liquid-glass navigation                            */
+  /* =================================================== */
+  .nav{
+    position:fixed; left:0; right:0; bottom:0;
+    display:flex; align-items:center; justify-content:center;
+    padding:0 0 26px; z-index:30; pointer-events:none;
+  }
+  .nav-inner{
+    pointer-events:auto;
+    position:relative;
+    display:flex; align-items:center; gap:6px;
+    padding:8px 10px;
+    border-radius:100px;
+    color:var(--glass-ink);
+    background:var(--glass-bg);
+    border:1px solid var(--glass-bd);
+    -webkit-backdrop-filter:blur(22px) saturate(200%) brightness(1.08);
+    backdrop-filter:blur(22px) saturate(200%) brightness(1.08);
+    box-shadow:
+      0 14px 40px rgba(21,42,32,.22),
+      0 2px 8px rgba(21,42,32,.12),
+      inset 0 1px 1px rgba(255,255,255,.75),
+      inset 0 -10px 22px rgba(255,255,255,.18),
+      inset 0 0 0 1px rgba(255,255,255,.08);
+    overflow:hidden;
+    transition:transform .5s var(--ease-spring), box-shadow .4s ease;
+  }
+  .nav-inner:hover{ transform:translateY(-2px); }
+  /* specular sheen that follows the cursor */
+  .nav-inner::before{
+    content:'';
+    position:absolute; inset:0; border-radius:inherit;
+    background:radial-gradient(160px 90px at var(--mx,50%) var(--my,0%), rgba(255,255,255,.55), transparent 70%);
+    opacity:.85; pointer-events:none;
+  }
+  /* top edge light */
+  .nav-inner::after{
+    content:'';
+    position:absolute; left:8%; right:8%; top:0; height:1.5px; border-radius:2px;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.9), transparent);
+    pointer-events:none;
+  }
+  .nav-btn{
+    position:relative; z-index:2;
+    width:36px; height:36px; border-radius:50%;
+    border:none; background:transparent; color:inherit;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0;
+    transition:background .25s ease, transform .35s var(--ease-spring), opacity .25s;
+  }
+  .nav-btn:hover{ background:rgba(255,255,255,.35); transform:scale(1.08); }
+  .nav-btn:active{ transform:scale(.92); }
+  .nav-btn:disabled{ opacity:.28; cursor:default; }
+  .nav-btn:disabled:hover{ background:transparent; transform:none; }
+  .dots{ position:relative; display:flex; align-items:center; gap:9px; padding:0 10px; z-index:2; }
+  .dot{
+    position:relative; z-index:2;
+    width:8px; height:8px; border-radius:50%;
+    background:currentColor; opacity:.32;
+    border:none; padding:0; cursor:pointer;
+    transition:opacity .3s ease, transform .4s var(--ease-spring);
+  }
+  .dot:hover{ opacity:.6; transform:scale(1.3); }
+  .dot.active{ opacity:1; transform:scale(1.05); }
+  /* the liquid blob sliding behind the dots */
+  .pill{
+    position:absolute; left:0; top:50%; z-index:1;
+    width:30px; height:22px; margin-top:-11px;
+    border-radius:100px;
+    background:linear-gradient(140deg, rgba(255,255,255,.85), rgba(255,255,255,.35));
+    box-shadow:
+      inset 0 1px 1px rgba(255,255,255,.9),
+      inset 0 -3px 8px rgba(255,255,255,.35),
+      0 4px 12px rgba(21,42,32,.18);
+    transition:transform .55s var(--ease-spring);
+    will-change:transform;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .pill{
+      background:linear-gradient(140deg, rgba(215,227,204,.55), rgba(215,227,204,.18));
+    }
+  }
+  :root[data-theme="dark"] .pill{
+    background:linear-gradient(140deg, rgba(215,227,204,.55), rgba(215,227,204,.18));
+  }
+
+  .chapter-track{
+    position:fixed; left:0; right:0; bottom:74px; z-index:29;
+    display:flex; justify-content:center; pointer-events:none;
+  }
+  .chapter-track span{
+    font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--glass-ink); background:var(--glass-bg); border:1px solid var(--glass-bd);
+    padding:5px 14px; border-radius:100px;
+    -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+    transition:opacity .3s ease;
+  }
+  @media (max-width:900px){ .chapter-track{ display:none; } }
+
+  .counter{
+    position:fixed; top:20px; right:24px; z-index:30;
+    font-size:12px; font-weight:600; letter-spacing:.04em;
+    color:var(--glass-ink);
+    font-variant-numeric:tabular-nums;
+    padding:7px 14px; border-radius:100px;
+    background:var(--glass-bg);
+    border:1px solid var(--glass-bd);
+    -webkit-backdrop-filter:blur(16px) saturate(180%);
+    backdrop-filter:blur(16px) saturate(180%);
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.6), 0 6px 18px rgba(21,42,32,.12);
+  }
+
+  :focus-visible{ outline:2px solid var(--ochre); outline-offset:3px; border-radius:6px; }
+
+  @media (max-width:900px){
+    .cover-grid, .problem-grid, .func-grid, .length-grid, .work-grid{ grid-template-columns:1fr !important; }
+    .steps-wrap, .final-grid, .compare-grid{ grid-template-columns:1fr !important; }
+    .slide-inner{ overflow-y:auto; }
+    .counter{ display:none; }
+    .cover-grid .diagram-frame{ display:none; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition-duration:.01ms !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; }
+    .rv{ opacity:1; transform:none; filter:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="brandmark" aria-hidden="true">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 20C4 20 3 10 12 6C21 2 20 12 20 12C20 12 20 20 12 20C7 20 4 20 4 20Z" fill="#6F9169" stroke="#1E3B2C" stroke-width="1.3"/><path d="M6 18C10 14 14 10 19 5" stroke="#1E3B2C" stroke-width="1.1" stroke-linecap="round"/></svg>
+  <span>Le potager optimal</span>
+</div>
+<div class="counter" id="counter">01 / 12</div>
+
+<div class="deck" id="deck">
+
+  <!-- ============ 0 — INTRO ============ -->
+  <section class="slide s-intro">
+    <div class="slide-inner">
+      <div class="intro-logo" data-anim>
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none"><path d="M4 20C4 20 3 10 12 6C21 2 20 12 20 12C20 12 20 20 12 20C7 20 4 20 4 20Z" fill="#D7E3CC" stroke="#FBF9F1" stroke-width="1.2"/><path d="M6 18C10 14 14 10 19 5" stroke="#FBF9F1" stroke-width="1" stroke-linecap="round"/></svg>
+      </div>
+      <div class="kicker" data-anim><span class="chnum">01</span>Intro</div>
+      <h1 class="intro-title" data-anim>Optimising a vegetable garden along a wall</h1>
+    </div>
+  </section>
+
+  <!-- ============ 1 — COVER ============ -->
+  <section class="slide s-cover">
+    <div class="slide-inner">
+      <div class="cover-grid">
+        <div>
+          <div class="kicker"><span class="chnum">01</span>Cover</div>
+          <div class="cover-eyebrow">Mathematics · Quadratic functions</div>
+          <h1 class="cover-title">Optimising a vegetable<br>garden along a wall</h1>
+          <p class="cover-sub">Turning a gardening problem into a quadratic function, then reading the answer off the parabola.</p>
+          <p class="cover-hook">“How large a garden can you enclose with only 36&nbsp;m of fencing?”</p>
+          <div class="cover-tags">
+            <span class="tag">36 m of fencing</span>
+            <span class="tag"><span class="math"><span class="v">x</span></span> = width</span>
+            <span class="tag"><span class="math"><span class="v">L</span></span> = length</span>
+          </div>
+        </div>
+        <div class="diagram-frame" data-anim style="aspect-ratio:1/1;">
+          <svg viewBox="0 0 400 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <line x1="60" y1="79" x2="340" y2="79" stroke="#1E3B2C" stroke-width="10"/>
+            <g stroke="#EDE7D3" stroke-width="3">
+              <line x1="70" y1="72" x2="82" y2="86"/><line x1="95" y1="72" x2="107" y2="86"/>
+              <line x1="120" y1="72" x2="132" y2="86"/><line x1="145" y1="72" x2="157" y2="86"/>
+              <line x1="170" y1="72" x2="182" y2="86"/><line x1="195" y1="72" x2="207" y2="86"/>
+              <line x1="220" y1="72" x2="232" y2="86"/><line x1="245" y1="72" x2="257" y2="86"/>
+              <line x1="270" y1="72" x2="282" y2="86"/><line x1="295" y1="72" x2="307" y2="86"/>
+              <line x1="320" y1="72" x2="332" y2="86"/>
+            </g>
+            <rect x="60" y="84" width="280" height="210" fill="#D7E3CC" stroke="#6F9169" stroke-width="2.5" rx="4"/>
+            <g stroke="#B98B3E" stroke-width="4" stroke-dasharray="9 7" stroke-linecap="round">
+              <line x1="60" y1="84" x2="60" y2="294"/>
+              <line x1="340" y1="84" x2="340" y2="294"/>
+              <line x1="60" y1="294" x2="340" y2="294"/>
+            </g>
+            <g stroke="#6F9169" stroke-width="1.4" opacity=".45">
+              <line x1="90" y1="94" x2="90" y2="284"/><line x1="130" y1="94" x2="130" y2="284"/>
+              <line x1="170" y1="94" x2="170" y2="284"/><line x1="210" y1="94" x2="210" y2="284"/>
+              <line x1="250" y1="94" x2="250" y2="284"/><line x1="290" y1="94" x2="290" y2="284"/>
+            </g>
+            <text x="200" y="60" text-anchor="middle" font-size="13" fill="#4B564D" font-weight="600">Wall — no fencing needed</text>
+            <text class="mathlabel" x="38" y="192" text-anchor="middle" font-size="19" fill="#1E3B2C" font-weight="600" transform="rotate(-90 38 192)">x</text>
+            <text class="mathlabel" x="362" y="192" text-anchor="middle" font-size="19" fill="#1E3B2C" font-weight="600" transform="rotate(-90 362 192)">x</text>
+            <text class="mathlabel" x="200" y="322" text-anchor="middle" font-size="19" fill="#1E3B2C" font-weight="600">L</text>
+            <text x="200" y="344" text-anchor="middle" font-size="12" fill="#4B564D">fencing · 36 m in total</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2 — THE PROBLEM ============ -->
+  <section class="slide s-problem">
+    <div class="slide-inner">
+      <div class="kicker"><span class="chnum">02</span>The problem</div>
+      <h1 class="slide-title">The problem</h1>
+      <p class="slide-sub">The wall replaces one of the four sides, so only three sides have to be fenced.</p>
+
+      <div class="problem-grid">
+        <div class="diagram-frame" style="aspect-ratio:16/11;">
+          <svg viewBox="0 0 480 320" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <g data-anim>
+              <line x1="70" y1="60" x2="410" y2="60" stroke="#1E3B2C" stroke-width="12"/>
+              <g stroke="#EDE7D3" stroke-width="3">
+                <line x1="82" y1="52" x2="96" y2="68"/><line x1="110" y1="52" x2="124" y2="68"/>
+                <line x1="138" y1="52" x2="152" y2="68"/><line x1="166" y1="52" x2="180" y2="68"/>
+                <line x1="194" y1="52" x2="208" y2="68"/><line x1="222" y1="52" x2="236" y2="68"/>
+                <line x1="250" y1="52" x2="264" y2="68"/><line x1="278" y1="52" x2="292" y2="68"/>
+                <line x1="306" y1="52" x2="320" y2="68"/><line x1="334" y1="52" x2="348" y2="68"/>
+                <line x1="362" y1="52" x2="376" y2="68"/><line x1="390" y1="52" x2="404" y2="68"/>
+              </g>
+              <text x="240" y="34" text-anchor="middle" font-size="13" fill="#4B564D" font-weight="600">🧱 Existing wall — no fencing needed</text>
+            </g>
+            <g data-anim>
+              <rect x="70" y="66" width="340" height="180" fill="#D7E3CC" stroke="none"/>
+            </g>
+            <g data-anim>
+              <line x1="46" y1="66" x2="46" y2="246" stroke="#4B564D" stroke-width="1.2"/>
+              <line x1="40" y1="66" x2="52" y2="66" stroke="#4B564D" stroke-width="1.2"/>
+              <line x1="40" y1="246" x2="52" y2="246" stroke="#4B564D" stroke-width="1.2"/>
+              <text class="mathlabel" x="30" y="160" text-anchor="middle" font-size="20" fill="#1E3B2C" font-weight="600" transform="rotate(-90 30 160)">x</text>
+            </g>
+            <g data-anim>
+              <line x1="434" y1="66" x2="434" y2="246" stroke="#4B564D" stroke-width="1.2"/>
+              <line x1="428" y1="66" x2="440" y2="66" stroke="#4B564D" stroke-width="1.2"/>
+              <line x1="428" y1="246" x2="440" y2="246" stroke="#4B564D" stroke-width="1.2"/>
+              <text class="mathlabel" x="452" y="160" text-anchor="middle" font-size="20" fill="#1E3B2C" font-weight="600" transform="rotate(-90 452 160)">x</text>
+            </g>
+            <g data-anim>
+              <line x1="70" y1="268" x2="410" y2="268" stroke="#4B564D" stroke-width="1.2"/>
+              <line x1="70" y1="262" x2="70" y2="274" stroke="#4B564D" stroke-width="1.2"/>
+              <line x1="410" y1="262" x2="410" y2="274" stroke="#4B564D" stroke-width="1.2"/>
+              <text class="mathlabel" x="240" y="296" text-anchor="middle" font-size="20" fill="#1E3B2C" font-weight="600">L</text>
+            </g>
+            <g data-anim stroke="#B98B3E" stroke-width="4.5" stroke-dasharray="10 7" stroke-linecap="round">
+              <line x1="70" y1="66" x2="70" y2="246"/>
+              <line x1="410" y1="66" x2="410" y2="246"/>
+              <line x1="70" y1="246" x2="410" y2="246"/>
+              <line x1="70" y1="66" x2="410" y2="66" stroke="#1E3B2C" stroke-width="2" stroke-dasharray="0"/>
+            </g>
+          </svg>
+        </div>
+
+        <div class="side-stack">
+          <div class="card fence-card" data-anim>
+            <div class="card-label">Fencing available</div>
+            <div class="result-number" style="font-size:clamp(34px,3.4vw,44px); margin-top:6px;">36 m</div>
+            <div style="font-size:13px; color:var(--ink-soft); margin-top:8px;">shared between three sides</div>
+          </div>
+          <div class="card soft eq-card" data-anim>
+            <div class="card-label" style="margin-bottom:12px;">The constraint</div>
+            <div class="math">2<span class="v">x</span> <span class="op">+</span> <span class="v">L</span> <span class="op">=</span> 36</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3 — FROM GEOMETRY TO ALGEBRA ============ -->
+  <section class="slide s-steps">
+    <div class="slide-inner">
+      <div class="kicker"><span class="chnum">03</span>Modelling</div>
+      <h1 class="slide-title">From geometry to algebra</h1>
+      <p class="slide-sub">The area is written with one single variable, the width <span class="math"><span class="v">x</span></span>.</p>
+
+      <div class="steps-wrap">
+        <div class="step" data-anim>
+          <div class="step-index">1</div>
+          <div class="math">2<span class="v">x</span> <span class="op">+</span> <span class="v">L</span> <span class="op">=</span> 36</div>
+          <div class="step-note">the fencing</div>
+        </div>
+        <div class="step-arrow" data-anim><svg width="14" height="20" viewBox="0 0 14 20" fill="none"><path d="M7 1v15M2 12l5 6 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="step" data-anim>
+          <div class="step-index">2</div>
+          <div class="math"><span class="v">L</span> <span class="op">=</span> 36 <span class="op">−</span> 2<span class="v">x</span></div>
+          <div class="step-note">length in terms of <span class="math"><span class="v">x</span></span></div>
+        </div>
+        <div class="step-arrow" data-anim><svg width="14" height="20" viewBox="0 0 14 20" fill="none"><path d="M7 1v15M2 12l5 6 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="step" data-anim>
+          <div class="step-index">3</div>
+          <div class="math"><span class="v">A</span>(<span class="v">x</span>) <span class="op">=</span> <span class="v">x</span> <span class="op">×</span> <span class="v">L</span></div>
+          <div class="step-note">area of a rectangle</div>
+        </div>
+        <div class="step-arrow" data-anim><svg width="14" height="20" viewBox="0 0 14 20" fill="none"><path d="M7 1v15M2 12l5 6 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="step" data-anim>
+          <div class="step-index">4</div>
+          <div class="math"><span class="v">A</span>(<span class="v">x</span>) <span class="op">=</span> <span class="v">x</span>(36 <span class="op">−</span> 2<span class="v">x</span>)</div>
+          <div class="step-note">substitute</div>
+        </div>
+        <div class="step-arrow" data-anim><svg width="14" height="20" viewBox="0 0 14 20" fill="none"><path d="M7 1v15M2 12l5 6 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="step-final" data-anim>
+          <div class="card-label">Expanding gives a quadratic function</div>
+          <div class="math"><span class="v">A</span>(<span class="v">x</span>) <span class="op">=</span> <span class="neg">−</span>2<span class="v">x</span><sup>2</sup> <span class="op">+</span> 36<span class="v">x</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  
+
+  <!-- ============ 4 — A FIRST VALUE: x = 4 ============ -->
+  <section class="slide s-value">
+    <div class="slide-inner">
+      <div class="kicker"><span class="chnum">04</span>A first try</div>
+      <h1 class="slide-title">A first try: a width of 4 m</h1>
+      <p class="slide-sub">Before looking for the best garden, let us test one width and see what the function gives.</p>
+
+      <div class="work-grid">
+        <div class="work-chain" data-anim>
+          <div class="step">
+            <div class="step-index">1</div>
+            <div class="math"><span class="v">A</span>(4) <span class="op">=</span> <span class="neg">−</span>2 <span class="op">×</span> 4² <span class="op">+</span> 36 <span class="op">×</span> 4</div>
+            <div class="step-note">substitute <span class="math"><span class="v">x</span> = 4</span></div>
+          </div>
+          <div class="step">
+            <div class="step-index">2</div>
+            <div class="math"><span class="v">A</span>(4) <span class="op">=</span> <span class="neg">−</span>32 <span class="op">+</span> 144</div>
+	    
+          </div>
+	  <div class="step">
+            <div class="step-index">3</div>
+            <div class="math"><span class="v">A</span>(4) <span class="op">=</span> 112</div>
+	    <div class="step-note">area for a 4m width, m²</div>
+          </div>
+        </div>
+
+        <div data-anim>
+          <div class="answer-card">
+            <div class="card-label">Area for a 4 m width</div>
+            <div class="result-number">112 m²</div>
+            <p class="sub">A garden of 4 m × 28 m uses all 36 m of fencing.</p>
+          </div>
+          <p class="mini-caption">112 m² is already large — but nothing says it is the best. Changing the width changes the area, so the question becomes: which width wins?</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 6 — SOLVING A(x) = 130 ============ -->
+  <section class="slide s-solve">
+    <div class="slide-inner">
+      <div class="kicker"><span class="chnum">05</span>Solving</div>
+      <h1 class="slide-title">Which widths give an area of 130 m²?</h1>
+      <p class="slide-sub">This time the area is known and the width is not, so we solve a quadratic equation.</p>
+
+      <div class="work-grid">
+        <div class="work-chain" data-anim>
+          <div class="step">
+            <div class="step-index">1</div>
+            <div class="math"><span class="neg">−</span>2<span class="v">x</span>² <span class="op">+</span> 36<span class="v">x</span> <span class="op">=</span> 130</div>
+          </div>
+          <div class="step">
+            <div class="step-index">2</div>
+            <div class="math"><span class="v">x</span><sup>2</sup> <span class="op">−</span> 18<span class="v">x</span> <span class="op">+</span> 65 <span class="op">=</span> 0</div>
+            <div class="step-note">divide by <span class="math"><span class="neg">−</span>2</span></div>
+          </div>
+          <div class="step">
+            <div class="step-index">3</div>
+            <div class="math">Δ <span class="op">=</span> <span class="v">b</span>² <span class="op">−</span> 4<span class="v">ac</span> <span class="op">=</span> 324 <span class="op">−</span> 260 <span class="op">=</span> 64</div>
+          </div>
+          <div class="step">
+            <div class="step-index">4</div>
+            <div class="math">
+              <span class="v">x</span> <span class="op">=</span>
+              <span class="frac">
+                <span class="num">18 <span class="op">±</span> <span class="sqrt"><span class="rad">√</span><span class="body">64</span></span></span>
+                <span class="den">2</span>
+              </span>
+              <span class="op">=</span>
+              <span class="frac"><span class="num">18 <span class="op">±</span> 8</span><span class="den">2</span></span>
+            </div>
+          </div>
+          <div class="step-final" style="grid-column:auto; margin-top:2px; padding:18px 24px;">
+            <div class="math" style="font-size:clamp(22px,2.4vw,30px);">
+              <span class="v">x</span><sub>1</sub> <span class="op">=</span> 5
+              <span class="op" style="margin:0 .7em; opacity:.5;">|</span>
+              <span class="v">x</span><sub>2</sub> <span class="op">=</span> 13
+            </div>
+          </div>
+        </div>
+
+        <div data-anim>
+          <div class="card graph-card">
+            <svg id="graph2" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Graph showing the two widths giving 130 square metres"></svg>
+          </div>
+          <div class="twin-grid">
+            <div class="twin">
+              <div class="math">5 <span class="op">×</span> 26</div>
+              <div class="dim">narrow and long · 130 m²</div>
+            </div>
+            <div class="twin">
+              <div class="math">13 <span class="op">×</span> 10</div>
+              <div class="dim">wide and short · 130 m²</div>
+            </div>
+          </div>
+          <p class="mini-caption">Two different gardens share the same area. They sit either side of the summit, and their midpoint is exactly 9 — a first clue about where the maximum hides.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- ============ 4 — THE AREA FUNCTION ============ -->
+  <section class="slide s-function">
+    <div class="slide-inner">
+      <div class="kicker"><span class="chnum">06</span>The function</div>
+      <h1 class="slide-title">The area function</h1>
+      <p class="slide-sub">Its graph is a parabola. Because <span class="math"><span class="v">a</span></span> is negative, it opens downwards — so it has a highest point.</p>
+
+      <div class="func-grid">
+        <div data-anim>
+          <div class="card func-hero">
+            <div class="card-label">Area of the garden, in m²</div>
+            <div class="math" style="margin-top:10px;"><span class="v">A</span>(<span class="v">x</span>) <span class="op">=</span> <span class="neg">−</span>2<span class="v">x</span><sup>2</sup> <span class="op">+</span> 36<span class="v">x</span></div>
+          </div>
+          <div class="coeffs">
+            <div class="coeff-row">
+              <span class="math"><span class="v">a</span></span>
+              <span class="what">coefficient of <span class="math"><span class="v">x</span><sup>2</sup></span></span>
+              <span class="val">−2</span>
+            </div>
+            <div class="coeff-row">
+              <span class="math"><span class="v">b</span></span>
+              <span class="what">coefficient of <span class="math"><span class="v">x</span></span></span>
+              <span class="val">36</span>
+            </div>
+            <div class="coeff-row">
+              <span class="math"><span class="v">c</span></span>
+              <span class="what">constant term</span>
+              <span class="val">0</span>
+            </div>
+          </div>
+          <p class="func-note">Only widths between 0 and 18 m make sense: beyond that, there is no fencing left for the length.</p>
+        </div>
+
+        <div class="card graph-card" data-anim>
+          <svg id="graph" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Graph of the area function"></svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7 — THE VERTEX ============ -->
+  <section class="slide s-vertex">
+    <div class="slide-inner">
+      <div class="kicker"><span class="chnum">07</span>The vertex</div>
+      <h1 class="slide-title">Finding the vertex of the parabola</h1>
+      <p class="slide-sub" style="margin-left:auto; margin-right:auto;">The vertex gives the width that makes the area as large as possible.</p>
+
+      <div class="vertex-chain" data-anim>
+        <div class="math">
+          <span class="v">x</span><sub>v</sub> <span class="op">=</span>
+          <span class="frac"><span class="num"><span class="neg">−</span><span class="v">b</span></span><span class="den">2<span class="v">a</span></span></span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="math">
+          <span class="v">x</span><sub>v</sub> <span class="op">=</span>
+          <span class="frac"><span class="num"><span class="neg">−</span>36</span><span class="den">2 <span class="op">×</span> (<span class="neg">−</span>2)</span></span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="math">
+          <span class="v">x</span><sub>v</sub> <span class="op">=</span>
+          <span class="frac"><span class="num"><span class="neg">−</span>36</span><span class="den"><span class="neg">−</span>4</span></span>
+          <span class="op">=</span> 9
+        </div>
+      </div>
+
+      <div class="big-result" data-anim>
+        <div class="card-label">Best width</div>
+        <div class="result-number glow-num">9 m</div>
+      </div>
+
+      <p class="vertex-note" data-anim>The same 9 that sat halfway between the two solutions of the previous step.</p>
+    </div>
+  </section>
+
+  <!-- ============ 8 — BACK TO THE LENGTH ============ -->
+  <section class="slide s-length">
+    <div class="slide-inner">
+      <div class="kicker"><span class="chnum">08</span>The length</div>
+      <h1 class="slide-title">Back to the length</h1>
+      <p class="slide-sub">Putting <span class="math"><span class="v">x</span> = 9</span> back into the constraint from step 1 gives the second dimension.</p>
+
+      <div class="length-grid">
+        <div class="length-chain" data-anim>
+          <div class="step">
+            <div class="step-index">1</div>
+            <div class="math"><span class="v">L</span> <span class="op">=</span> 36 <span class="op">−</span> 2<span class="v">x</span></div>
+          </div>
+          <div class="step">
+            <div class="step-index">2</div>
+            <div class="math"><span class="v">L</span> <span class="op">=</span> 36 <span class="op">−</span> 2 <span class="op">×</span> 9</div>
+          </div>
+          <div class="step-final">
+            <div class="card-label">Length</div>
+            <div class="math"><span class="v">L</span> <span class="op">=</span> 18 m</div>
+          </div>
+          <div class="step">
+            <div class="step-index">3</div>
+            <div class="math"><span class="v">A</span>(9) <span class="op">=</span> 9 <span class="op">×</span> 18 <span class="op">=</span> 162</div>
+            <div class="step-note">the maximum area, in m²</div>
+          </div>
+        </div>
+
+        <div class="diagram-frame" data-anim style="aspect-ratio:16/10;">
+          <svg viewBox="0 0 480 300" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <line x1="80" y1="50" x2="400" y2="50" stroke="#1E3B2C" stroke-width="11"/>
+            <g stroke="#EDE7D3" stroke-width="3">
+              <line x1="92" y1="43" x2="105" y2="58"/><line x1="118" y1="43" x2="131" y2="58"/>
+              <line x1="144" y1="43" x2="157" y2="58"/><line x1="170" y1="43" x2="183" y2="58"/>
+              <line x1="196" y1="43" x2="209" y2="58"/><line x1="222" y1="43" x2="235" y2="58"/>
+              <line x1="248" y1="43" x2="261" y2="58"/><line x1="274" y1="43" x2="287" y2="58"/>
+              <line x1="300" y1="43" x2="313" y2="58"/><line x1="326" y1="43" x2="339" y2="58"/>
+              <line x1="352" y1="43" x2="365" y2="58"/><line x1="378" y1="43" x2="391" y2="58"/>
+            </g>
+            <rect x="80" y="56" width="320" height="160" fill="#D7E3CC"/>
+            <g stroke="#6F9169" stroke-width="1.2" opacity=".4">
+              <line x1="120" y1="64" x2="120" y2="208"/><line x1="160" y1="64" x2="160" y2="208"/>
+              <line x1="200" y1="64" x2="200" y2="208"/><line x1="240" y1="64" x2="240" y2="208"/>
+              <line x1="280" y1="64" x2="280" y2="208"/><line x1="320" y1="64" x2="320" y2="208"/>
+              <line x1="360" y1="64" x2="360" y2="208"/>
+            </g>
+            <rect x="80" y="56" width="320" height="160" fill="none" stroke="#6F9169" stroke-width="2.5" rx="3"/>
+            <g stroke="#B98B3E" stroke-width="4" stroke-dasharray="9 6" stroke-linecap="round">
+              <line x1="80" y1="56" x2="80" y2="216"/>
+              <line x1="400" y1="56" x2="400" y2="216"/>
+              <line x1="80" y1="216" x2="400" y2="216"/>
+            </g>
+            <line x1="58" y1="56" x2="58" y2="216" stroke="#4B564D" stroke-width="1.2"/>
+            <line x1="52" y1="56" x2="64" y2="56" stroke="#4B564D" stroke-width="1.2"/>
+            <line x1="52" y1="216" x2="64" y2="216" stroke="#4B564D" stroke-width="1.2"/>
+            <text x="34" y="140" text-anchor="middle" font-size="17" fill="#1E3B2C" font-weight="700" transform="rotate(-90 34 140)">9 m</text>
+            <line x1="80" y1="238" x2="400" y2="238" stroke="#4B564D" stroke-width="1.2"/>
+            <line x1="80" y1="232" x2="80" y2="244" stroke="#4B564D" stroke-width="1.2"/>
+            <line x1="400" y1="232" x2="400" y2="244" stroke="#4B564D" stroke-width="1.2"/>
+            <text x="240" y="264" text-anchor="middle" font-size="17" fill="#1E3B2C" font-weight="700">18 m</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 9 — FINAL RESULT ============ -->
+  <section class="slide s-final">
+    <div class="slide-inner">
+      <div class="kicker"><span class="chnum">10</span>Result</div>
+      <h1 class="slide-title">The best possible garden</h1>
+
+      <div class="final-hero" data-anim>
+        <div class="hero-label">Maximum area</div>
+        <div class="hero-num glow-num">162 m²</div>
+        <div class="final-stats">
+          <span class="final-stat-chip">x = 9 m</span>
+          <span class="final-stat-chip">L = 18 m</span>
+        </div>
+      </div>
+
+      <div class="final-illustration" data-anim>
+        <svg viewBox="0 0 520 200" width="100%" style="max-width:560px;" xmlns="http://www.w3.org/2000/svg">
+          <line x1="60" y1="40" x2="460" y2="40" stroke="#1E3B2C" stroke-width="9"/>
+          <g stroke="#F3EFE2" stroke-width="2.5">
+            <line x1="72" y1="34" x2="83" y2="47"/><line x1="94" y1="34" x2="105" y2="47"/>
+            <line x1="116" y1="34" x2="127" y2="47"/><line x1="138" y1="34" x2="149" y2="47"/>
+            <line x1="160" y1="34" x2="171" y2="47"/><line x1="182" y1="34" x2="193" y2="47"/>
+            <line x1="204" y1="34" x2="215" y2="47"/><line x1="226" y1="34" x2="237" y2="47"/>
+            <line x1="248" y1="34" x2="259" y2="47"/><line x1="270" y1="34" x2="281" y2="47"/>
+            <line x1="292" y1="34" x2="303" y2="47"/><line x1="314" y1="34" x2="325" y2="47"/>
+            <line x1="336" y1="34" x2="347" y2="47"/><line x1="358" y1="34" x2="369" y2="47"/>
+            <line x1="380" y1="34" x2="391" y2="47"/><line x1="402" y1="34" x2="413" y2="47"/>
+            <line x1="424" y1="34" x2="435" y2="47"/><line x1="446" y1="34" x2="457" y2="47"/>
+          </g>
+          <rect x="60" y="46" width="400" height="120" fill="#D7E3CC" stroke="#6F9169" stroke-width="2.5"/>
+          <g stroke="#6F9169" stroke-width="1.2" opacity=".4">
+            <line x1="110" y1="52" x2="110" y2="160"/><line x1="160" y1="52" x2="160" y2="160"/>
+            <line x1="210" y1="52" x2="210" y2="160"/><line x1="260" y1="52" x2="260" y2="160"/>
+            <line x1="310" y1="52" x2="310" y2="160"/><line x1="360" y1="52" x2="360" y2="160"/>
+            <line x1="410" y1="52" x2="410" y2="160"/>
+          </g>
+          <text x="260" y="190" text-anchor="middle" font-size="13" fill="#4B564D" font-weight="600">9 m × 18 m</text>
+        </svg>
+      </div>
+
+      <p class="final-caption" data-anim>36 m of fencing → 162 m² of maximum area — a shape twice as long as it is wide.</p>
+    </div>
+  </section>
+
+  
+
+</div>
+
+<div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<div class="chapter-track"><span id="chapterLabel">Cover</span></div>
+<div class="nav">
+  <div class="nav-inner" id="navGlass">
+    <button class="nav-btn" id="prevBtn" aria-label="Previous slide">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="dots" id="dots"><span class="pill" id="pill"></span></div>
+    <button class="nav-btn" id="nextBtn" aria-label="Next slide">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  const slides   = Array.from(document.querySelectorAll('.slide'));
+  const total    = slides.length;
+  const dotsWrap = document.getElementById('dots');
+  const pill     = document.getElementById('pill');
+  const counter  = document.getElementById('counter');
+  const prevBtn  = document.getElementById('prevBtn');
+  const nextBtn  = document.getElementById('nextBtn');
+  const glass    = document.getElementById('navGlass');
+  const reduce   = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let idx = 0, busy = false;
+
+  /* ---------- stagger indices ---------- */
+  const RV = '.kicker, h1, .slide-sub, .cover-eyebrow, .cover-sub, .cover-hook, .cover-tags, [data-anim]';
+  slides.forEach(s => {
+    s.querySelectorAll(RV).forEach((el, i) => {
+      el.classList.add('rv');
+      el.style.setProperty('--i', i);
+    });
+  });
+
+  /* ---------- dots ---------- */
+  const dots = [];
+  for (let i = 0; i < total; i++){
+    const d = document.createElement('button');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+    d.addEventListener('click', () => go(i));
+    dotsWrap.appendChild(d);
+    dots.push(d);
+  }
+
+  function movePill(){
+    const d = dots[idx];
+    if(!d) return;
+    const x = d.offsetLeft + d.offsetWidth / 2 - pill.offsetWidth / 2;
+    if (reduce){ pill.style.transform = 'translateX(' + x + 'px)'; return; }
+    pill.style.transform = 'translateX(' + x + 'px) scaleX(1.35)';
+    clearTimeout(movePill._t);
+    movePill._t = setTimeout(() => {
+      pill.style.transform = 'translateX(' + x + 'px) scaleX(1)';
+    }, 180);
+  }
+
+  const chapterLabel = document.getElementById('chapterLabel');
+  function chrome(){
+    dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    counter.textContent = String(idx + 1).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
+    prevBtn.disabled = idx === 0;
+    nextBtn.disabled = idx === total - 1;
+    movePill();
+    if (chapterLabel){
+      const k = slides[idx].querySelector('.kicker');
+      chapterLabel.textContent = k ? k.textContent.replace(/^\d+/, '').trim() : '';
+    }
+  }
+
+  /* ---------- slide transition ---------- */
+  const CLASSES = ['stage-left','stage-right','exit-left','exit-right','is-anim'];
+
+  function go(next){
+    next = Math.max(0, Math.min(total - 1, next));
+    if (next === idx || busy) return;
+    const dir = next > idx ? 1 : -1;
+    const cur = slides[idx];
+    const nxt = slides[next];
+    busy = true;
+
+    nxt.classList.remove(...CLASSES, 'is-active');
+    nxt.classList.add('is-anim', dir > 0 ? 'stage-right' : 'stage-left');
+    void nxt.offsetWidth;                       // force the staged position
+
+    requestAnimationFrame(() => {
+      cur.classList.remove('is-active');
+      cur.classList.add('is-anim', dir > 0 ? 'exit-left' : 'exit-right');
+      nxt.classList.remove('stage-right', 'stage-left');
+      nxt.classList.add('is-active');
+      idx = next;
+      chrome();
+      playGraphs(idx);
+
+      setTimeout(() => {
+        cur.classList.remove(...CLASSES);
+        nxt.classList.remove('is-anim');
+        busy = false;
+      }, reduce ? 20 : 820);
+    });
+  }
+
+  prevBtn.addEventListener('click', () => go(idx - 1));
+  nextBtn.addEventListener('click', () => go(idx + 1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); go(idx + 1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'PageUp')  { e.preventDefault(); go(idx - 1); }
+    if (e.key === 'Home') go(0);
+    if (e.key === 'End')  go(total - 1);
+  });
+
+  let touchX = null, touchY = null;
+  document.addEventListener('touchstart', e => {
+    touchX = e.touches[0].clientX; touchY = e.touches[0].clientY;
+  }, {passive:true});
+  document.addEventListener('touchend', e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    const dy = e.changedTouches[0].clientY - touchY;
+    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? go(idx + 1) : go(idx - 1); }
+    touchX = touchY = null;
+  }, {passive:true});
+
+  let wheelLock = 0;
+  window.addEventListener('wheel', e => {
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (Math.abs(d) < 28) return;
+    const now = Date.now();
+    if (now - wheelLock < 900) return;
+    wheelLock = now;
+    go(idx + (d > 0 ? 1 : -1));
+  }, {passive:true});
+
+  /* ---------- glass: cursor-following highlight ---------- */
+  glass.addEventListener('pointermove', e => {
+    const r = glass.getBoundingClientRect();
+    glass.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+    glass.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+  });
+  glass.addEventListener('pointerleave', () => {
+    glass.style.setProperty('--mx', '50%');
+    glass.style.setProperty('--my', '0%');
+  });
+
+  /* =================================================== */
+  /*  Graphs                                             */
+  /* =================================================== */
+  const NS = 'http://www.w3.org/2000/svg';
+  const A  = x => -2 * x * x + 36 * x;
+
+  function el(tag, attrs, text){
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function buildGraph(svg, opts){
+    const W = 660, H = 430;
+    const padL = 78, padR = 48, padT = 58, padB = 66;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const xMax = 18, yMax = 190;
+    const px = x => padL + x / xMax * plotW;
+    const py = y => padT + plotH - y / yMax * plotH;
+
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    // filled area under the curve
+    let d = 'M' + px(0) + ',' + py(0);
+    for (let x = 0; x <= 18.0001; x += 0.2) d += ' L' + px(x).toFixed(2) + ',' + py(A(x)).toFixed(2);
+    svg.appendChild(el('path', {d: d + ' L' + px(18) + ',' + py(0) + ' Z', class: 'g-area'}));
+
+    // axes
+    svg.appendChild(el('line', {x1: px(0), y1: py(0), x2: px(18) + 12, y2: py(0), class: 'g-axis'}));
+    svg.appendChild(el('line', {x1: px(0), y1: py(0), x2: px(0), y2: padT - 14, class: 'g-axis'}));
+
+    // x ticks + labels
+    opts.xTicks.forEach(t => {
+      svg.appendChild(el('line', {x1: px(t), y1: py(0), x2: px(t), y2: py(0) + 6, class: 'g-tick'}));
+      svg.appendChild(el('text', {x: px(t), y: py(0) + 24, 'text-anchor': 'middle', class: 'g-tick-text'}, t));
+    });
+    // y ticks + labels
+    opts.yTicks.forEach(t => {
+      svg.appendChild(el('line', {x1: px(0) - 6, y1: py(t), x2: px(0), y2: py(t), class: 'g-tick'}));
+      svg.appendChild(el('text', {x: px(0) - 12, y: py(t) + 4, 'text-anchor': 'end', class: 'g-tick-text'}, t));
+    });
+
+    // axis titles — kept well clear of the ticks (the old overlap lived here)
+    svg.appendChild(el('text', {x: px(9), y: H - 14, 'text-anchor': 'middle', class: 'g-axis-title'}, 'Width x (m)'));
+    svg.appendChild(el('text', {x: px(0) - 14, y: padT - 26, 'text-anchor': 'start', class: 'g-axis-title'}, 'Area A(x) (m²)'));
+
+    // horizontal line, e.g. A = 130
+    if (opts.hline !== undefined){
+      svg.appendChild(el('line', {x1: px(0), y1: py(opts.hline), x2: px(18), y2: py(opts.hline), class: 'g-hline g-late'}));
+      svg.appendChild(el('text', {x: px(18) - 4, y: py(opts.hline) - 10, 'text-anchor': 'end', class: 'g-note soft g-late'}, 'A(x) = ' + opts.hline));
+    }
+
+    // the curve itself
+    let pts = 'M' + px(0) + ',' + py(A(0));
+    for (let x = 0.2; x <= 18.0001; x += 0.2) pts += ' L' + px(x).toFixed(2) + ',' + py(A(x)).toFixed(2);
+    const curve = el('path', {d: pts, class: 'g-curve'});
+    svg.appendChild(curve);
+
+    // marked points
+    (opts.points || []).forEach(p => {
+      const y = A(p.x);
+      if (p.guides || p.vguide){
+        svg.appendChild(el('line', {x1: px(p.x), y1: py(y), x2: px(p.x), y2: py(0), class: 'g-guide g-late'}));
+      }
+      if (p.guides){
+        svg.appendChild(el('line', {x1: px(0), y1: py(y), x2: px(p.x), y2: py(y), class: 'g-guide g-late'}));
+      }
+      svg.appendChild(el('circle', {cx: px(p.x), cy: py(y), r: 6, class: 'g-dot g-late' + (p.alt ? ' alt' : '') + (p.peak ? ' peak' : '')}));
+      if (p.label){
+        svg.appendChild(el('text', {
+          x: px(p.x) + (p.anchor === 'end' ? -12 : 12),
+          y: py(y) + (p.below ? 22 : -16),
+          'text-anchor': p.anchor || 'start',
+          class: 'g-note g-late' + (p.peak ? ' peak' : '')
+        }, p.label));
+      }
+      if (p.sub){
+        svg.appendChild(el('text', {
+          x: px(p.x) + (p.anchor === 'end' ? -12 : 12),
+          y: py(y) + (p.below ? 42 : 24),
+          'text-anchor': p.anchor || 'start',
+          class: 'g-note soft g-late'
+        }, p.sub));
+      }
+    });
+
+    // draw-on animation
+    const len = curve.getTotalLength();
+    curve.style.strokeDasharray  = len;
+    curve.style.strokeDashoffset = len;
+
+    return {
+      play(){
+        if (reduce){ curve.style.strokeDashoffset = 0; svg.classList.add('played'); return; }
+        curve.style.transition = 'none';
+        curve.style.strokeDashoffset = len;
+        svg.classList.remove('played');
+        void curve.getBoundingClientRect();
+        requestAnimationFrame(() => {
+          curve.style.transition = 'stroke-dashoffset 1.15s cubic-bezier(.25,.8,.3,1) .25s';
+          curve.style.strokeDashoffset = 0;
+          svg.classList.add('played');
+        });
+      }
+    };
+  }
+
+  const graphs = {};
+  const g1 = document.getElementById('graph');
+  const g2 = document.getElementById('graph2');
+
+  graphs[slides.indexOf(g1.closest('.slide'))] = buildGraph(g1, {
+    xTicks: [0, 9, 18],
+    yTicks: [0, 81, 162],
+    points: [{x: 9, guides: true, peak: true, label: 'Maximum area = 162 m²', sub: '(9, 162)'}]
+  });
+
+  graphs[slides.indexOf(g2.closest('.slide'))] = buildGraph(g2, {
+    xTicks: [0, 5, 9, 13, 18],
+    yTicks: [0, 130, 162],
+    hline: 130,
+    points: [
+      {x: 5,  alt: true, vguide: true},
+      {x: 13, alt: true, vguide: true}
+    ]
+  });
+
+  function playGraphs(i){ if (graphs[i]) graphs[i].play(); }
+
+  /* ---------- boot ---------- */
+  slides[0].classList.add('is-active');
+  chrome();
+  window.addEventListener('resize', movePill);
+  window.addEventListener('load', movePill);
+  document.fonts && document.fonts.ready.then(movePill);
+})();
+</script>
+
+</body>
+</html>
